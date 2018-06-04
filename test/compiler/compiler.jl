@@ -1678,3 +1678,16 @@ function JLD2_hash(k::Ptr{UInt8}, n::Integer=length(k), initval::UInt32=UInt32(0
     c
 end
 @test isa(code_typed(JLD2_hash, Tuple{Ptr{UInt8}, Int, UInt32}), Array)
+
+# issue #27316 - inference shouldn't hang on these
+f27316(::Vector) = nothing
+f27316(::Any) = f27316(Any[][1]), f27316(Any[][1])
+@test Tuple{Nothing,Nothing} <: Base.return_types(f27316, Tuple{Int})[1] == Tuple{Union{Nothing, Tuple{Any,Any}},Union{Nothing, Tuple{Any,Any}}} # we may be able to improve this bound in the future
+function g27316()
+    x = nothing
+    while rand() < 0.5
+        x = (x,)
+    end
+    return x
+end
+@test Tuple{Tuple{Nothing}} <: Base.return_types(g27316, Tuple{})[1] == Any # we may be able to improve this bound in the future
