@@ -195,7 +195,6 @@ end
 end
 
 @testset "complex matrix-vector multiplication and left-division" begin
-    if Base.USE_GPL_LIBS
     for i = 1:5
         a = I + 0.1*sprandn(5, 5, 0.2)
         b = randn(5,3) + im*randn(5,3)
@@ -210,9 +209,6 @@ end
         @test (maximum(abs.(mul!(similar(c), transpose(a), c) - transpose(Array(a))*c)) < 100*eps()) # for compatibility with present matmul API. Should go away eventually.
         @test (maximum(abs.(a'b - Array(a)'b)) < 100*eps())
         @test (maximum(abs.(transpose(a)*b - transpose(Array(a))*b)) < 100*eps())
-        @test (maximum(abs.(a\b - Array(a)\b)) < 1000*eps())
-        @test (maximum(abs.(a'\b - Array(a')\b)) < 1000*eps())
-        @test (maximum(abs.(transpose(a)\b - Array(transpose(a))\b)) < 1000*eps())
         @test (maximum(abs.((a'*c + d) - (Array(a)'*c + d))) < 1000*eps())
         @test (maximum(abs.((α*transpose(a)*c + β*d) - (α*transpose(Array(a))*c + β*d))) < 1000*eps())
         @test (maximum(abs.((transpose(a)*c + d) - (transpose(Array(a))*c + d))) < 1000*eps())
@@ -225,9 +221,6 @@ end
         @test (maximum(abs.(a*b - Array(a)*b)) < 100*eps())
         @test (maximum(abs.(a'b - Array(a)'b)) < 100*eps())
         @test (maximum(abs.(transpose(a)*b - transpose(Array(a))*b)) < 100*eps())
-        @test (maximum(abs.(a\b - Array(a)\b)) < 1000*eps())
-        @test (maximum(abs.(a'\b - Array(a')\b)) < 1000*eps())
-        @test (maximum(abs.(transpose(a)\b - Array(transpose(a))\b)) < 1000*eps())
 
         a = I + tril(0.1*sprandn(5, 5, 0.2))
         b = randn(5,3) + im*randn(5,3)
@@ -304,7 +297,6 @@ end
         @test (maximum(abs.(a\b - Array(a)\b)) < 1000*eps())
         @test (maximum(abs.(a'\b - Array(a')\b)) < 1000*eps())
         @test (maximum(abs.(transpose(a)\b - Array(transpose(a))\b)) < 1000*eps())
-    end
     end
 end
 
@@ -1788,31 +1780,6 @@ end
 
 @testset "fillstored!" begin
     @test LinearAlgebra.fillstored!(sparse(2.0I, 5, 5), 1) == Matrix(I, 5, 5)
-end
-
-@testset "factorization" begin
-    srand(123)
-    local A
-    A = sparse(Diagonal(rand(5))) + sprandn(5, 5, 0.2) + im*sprandn(5, 5, 0.2)
-    A = A + copy(A')
-    @test !Base.USE_GPL_LIBS || abs(det(factorize(Hermitian(A)))) ≈ abs(det(factorize(Array(A))))
-    A = sparse(Diagonal(rand(5))) + sprandn(5, 5, 0.2) + im*sprandn(5, 5, 0.2)
-    A = A*A'
-    @test !Base.USE_GPL_LIBS || abs(det(factorize(Hermitian(A)))) ≈ abs(det(factorize(Array(A))))
-    A = sparse(Diagonal(rand(5))) + sprandn(5, 5, 0.2)
-    A = A + copy(transpose(A))
-    @test !Base.USE_GPL_LIBS || abs(det(factorize(Symmetric(A)))) ≈ abs(det(factorize(Array(A))))
-    A = sparse(Diagonal(rand(5))) + sprandn(5, 5, 0.2)
-    A = A*transpose(A)
-    @test !Base.USE_GPL_LIBS || abs(det(factorize(Symmetric(A)))) ≈ abs(det(factorize(Array(A))))
-    @test factorize(triu(A)) == triu(A)
-    @test isa(factorize(triu(A)), UpperTriangular{Float64, SparseMatrixCSC{Float64, Int}})
-    @test factorize(tril(A)) == tril(A)
-    @test isa(factorize(tril(A)), LowerTriangular{Float64, SparseMatrixCSC{Float64, Int}})
-    C, b = A[:, 1:4], fill(1., size(A, 1))
-    @test !Base.USE_GPL_LIBS || factorize(C)\b ≈ Array(C)\b
-    @test_throws ErrorException eigen(A)
-    @test_throws ErrorException inv(A)
 end
 
 @testset "issue #13792, use sparse triangular solvers for sparse triangular solves" begin
