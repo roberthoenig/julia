@@ -4,7 +4,17 @@
 
 module SimdLoop
 
-export @simd, simd_outer_range, simd_inner_length, simd_index
+export @simd, simd_outer_range, simd_inner_length, simd_index, is_simd_safe
+
+"""
+    is_simd_safe(x)
+
+Trait to assert that a it is safe to assume that methods on these types are
+safe-ish to be called under the constraints of `@simd ivdep`.
+"""
+is_simd_safe(::Any)    = false
+is_simd_safe(::Array)  = true
+is_simd_safe(::Number) = true
 
 # Error thrown from ill-formed uses of @simd
 struct SimdError <: Exception

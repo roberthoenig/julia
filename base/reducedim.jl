@@ -230,6 +230,13 @@ function _mapreducedim!(f, op, R::AbstractArray, A::AbstractArray)
             end
             R[i1,IR] = r
         end
+    elseif is_simd_safe(R) # TODO make sure that R and A are not aliased?
+        @inbounds for IA in CartesianIndices(indsAt)
+            IR = Broadcast.newindex(IA, keep, Idefault)
+            @simd ivdep for i in axes(A, 1)
+                R[i,IR] = op(R[i,IR], f(A[i,IA]))
+            end
+        end
     else
         @inbounds for IA in CartesianIndices(indsAt)
             IR = Broadcast.newindex(IA, keep, Idefault)

@@ -11,6 +11,7 @@ using .Base.Cartesian
 using .Base: Indices, OneTo, tail, to_shape, isoperator, promote_typejoin,
              _msk_end, unsafe_bitgetindex, bitcache_chunks, bitcache_size, dumpbitcache, unalias
 import .Base: copy, copyto!
+import .Base.SimdLoop: is_simd_safe
 export broadcast, broadcast!, BroadcastStyle, broadcast_axes, broadcastable, dotview, @__dot__
 
 ### Objects with customized broadcasting behavior should declare a BroadcastStyle
@@ -815,6 +816,8 @@ preprocess(dest, x) = extrude(broadcast_unalias(dest, x))
 preprocess_args(dest, args::Tuple{Any}) = (preprocess(dest, args[1]),)
 preprocess_args(dest, args::Tuple{}) = ()
 
+is_simd_safe(bc::Broadcasted) = all(is_simd_safe.(bc.args))
+
 # Specialize this method if all you want to do is specialize on typeof(dest)
 @inline function copyto!(dest::AbstractArray, bc::Broadcasted{Nothing})
     axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
@@ -826,8 +829,14 @@ preprocess_args(dest, args::Tuple{}) = ()
         end
     end
     bc′ = preprocess(dest, bc)
-    @simd for I in eachindex(bc′)
-        @inbounds dest[I] = bc′[I]
+    if is_simd_safe(dest) && is_simd_safe(bc′)
+        @simd ivdep for I in eachindex(bc′)
+            @inbounds dest[I] = bc′[I]
+        end
+    else
+        @simd for I in eachindex(bc′)
+            @inbounds dest[I] = bc′[I]
+        end
     end
     return dest
 end

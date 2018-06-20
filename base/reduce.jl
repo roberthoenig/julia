@@ -190,6 +190,8 @@ foldr(op, itr) = mapfoldr(identity, op, itr)
         @inbounds a1 = A[ifirst]
         @inbounds a2 = A[ifirst+1]
         v = op(f(a1), f(a2))
+        # TODO: It should be safe but not necessary to use `@simd ivdep` here
+        # since we only do memory reads and not write.
         @simd for i = ifirst + 2 : ilast
             @inbounds ai = A[i]
             v = op(v, f(ai))
