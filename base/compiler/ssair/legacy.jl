@@ -1,6 +1,7 @@
 # This file is a part of Julia. License is MIT: https://julialang.org/license
 
-function inflate_ir(ci::CodeInfo, spvals::SimpleVector)
+function inflate_ir(ci::CodeInfo, linfo::MethodInstance)
+    spvals = spvals_from_meth_instance(linfo)
     code = copy_exprargs(ci.code)
     for i = 1:length(code)
         if isa(code[i], Expr)
@@ -32,17 +33,20 @@ function inflate_ir(ci::CodeInfo, spvals::SimpleVector)
             code[i] = stmt
         end
     end
-    newslottypes = ci.inferred ? copy(ci.slottypes) : Any[ Any for i = 1:length(ci.slotnames) ]
+    if ci.inferred
+        argtypes, _ = get_argtypes(linfo)
+    else
+        argtypes = Any[ Any for i = 1:length(ci.slotnames) ]
+    end
     ssavaluetypes = ci.ssavaluetypes isa Vector{Any} ? copy(ci.ssavaluetypes) : Any[ Any for i = 1:ci.ssavaluetypes ]
     ir = IRCode(code, ssavaluetypes, copy(ci.codelocs), copy(ci.ssaflags), cfg, collect(LineInfoNode, ci.linetable),
-                newslottypes, Any[], spvals)
+                argtypes, Any[], spvals)
     return ir
 end
 
 function replace_code_newstyle!(ci::CodeInfo, ir::IRCode, nargs::Int)
     @assert isempty(ir.new_nodes)
     # All but the first `nargs` slots will now be unused
-    resize!(ci.slottypes, nargs+1)
     resize!(ci.slotnames, nargs+1)
     resize!(ci.slotflags, nargs+1)
     ci.code = ir.stmts
